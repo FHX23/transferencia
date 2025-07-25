@@ -86,5 +86,13 @@ echo "Configurando reglas de SALIDA (OUTPUT)..."
 iptables -A OUTPUT -p tcp -d 192.168.23.0/24 --dport 22 -j ACCEPT
 iptables -A OUTPUT -p tcp -d 200.27.0.0/24 --dport 22 -j ACCEPT
 iptables -A OUTPUT -p tcp -d 146.83.1.0/24 --dport 22 -j ACCEPT
+# --- Reglas adicionales para el funcionamiento del servidor
+# Permitir consultas DNS (necesario para resolver nombres de dominio para actualizaciones, etc.)
+iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+
+# Permitir que Nagios realice sus checks a toda la red interna
+iptables -A OUTPUT -d $INTERNAL_NET_INFRA -j ACCEPT
+iptables -A OUTPUT -d $INTERNAL_NET_USERS -j ACCEPT
 
 echo "Firewall configurado exitosamente."
