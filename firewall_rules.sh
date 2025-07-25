@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # =================================================================
-# SCRIPT DE CONFIGURACIÓN DE IPTABLES PARA SRV-DEV (192.168.1.10)
-# VERSIÓN RESTRINGIDA
+# SCRIPT DE CONFIGURACIÓN DE IPTABLES REUTILIZABLE
 # =================================================================
 
 echo "Limpiando reglas de firewall existentes..."
@@ -19,17 +18,22 @@ iptables -P OUTPUT  DROP
 iptables -P FORWARD DROP
 
 # -----------------------------------------------------------------
-# Variables de Red
+# Variables de Red (Centralizadas para fácil reutilización)
 # -----------------------------------------------------------------
-TI_PC1="192.168.1.6"
-TI_PC2="192.168.1.7"
-SRV_WEB="192.168.1.11"
-SRV_HOSTING="192.168.1.13"
+# --- Redes Internas
 INTERNAL_NET_INFRA="192.168.1.0/27"
 INTERNAL_NET_USERS="192.168.1.32/27"
 
+# --- Hosts y Servidores
+TI_PC1="192.168.1.6"
+TI_PC2="192.168.1.7"
+SRV_DEV="192.168.1.10"
+SRV_WEB="192.168.1.11"
+SRV_PROD="192.168.1.12"
+SRV_HOSTING="192.168.1.13"
+
 # -----------------------------------------------------------------
-# Reglas Fundamentales
+# Reglas Fundamentales (Loopback y Conexiones Establecidas)
 # -----------------------------------------------------------------
 echo "Aplicando reglas fundamentales..."
 iptables -A INPUT -i lo -j ACCEPT
@@ -39,7 +43,7 @@ iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 # =================================================================
-# REGLAS DE ENTRADA (INPUT - Tráfico HACIA el servidor)
+# REGLAS DE ENTRADA (INPUT - Tráfico HACIA el servidor firewall)
 # =================================================================
 echo "Configurando reglas de ENTRADA (INPUT)..."
 
@@ -65,12 +69,16 @@ iptables -A FORWARD -p tcp -d $SRV_WEB --dport 443 -j ACCEPT
 iptables -A FORWARD -p tcp -d $SRV_HOSTING --dport 80 -j ACCEPT
 iptables -A FORWARD -p tcp -d $SRV_HOSTING --dport 443 -j ACCEPT
 
-# --- Acceso a los demás servidores SÓLO desde redes internas
-iptables -A FORWARD -s $INTERNAL_NET_INFRA -j ACCEPT
-iptables -A FORWARD -s $INTERNAL_NET_USERS -j ACCEPT
+# --- Acceso a Servidores Internos (Dev y Prod) SÓLO desde redes internas
+# Nota: La regla para SRV_DEV solo tendrá efecto si este script se ejecuta
+# en un firewall que NO sea 192.168.1.10.
+iptables -A FORWARD -s $INTERNAL_NET_INFRA -d $SRV_DEV -j ACCEPT
+iptables -A FORWARD -s $INTERNAL_NET_USERS -d $SRV_DEV -j ACCEPT
+iptables -A FORWARD -s $INTERNAL_NET_INFRA -d $SRV_PROD -j ACCEPT
+iptables -A FORWARD -s $INTERNAL_NET_USERS -d $SRV_PROD -j ACCEPT
 
 # =================================================================
-# REGLAS DE SALIDA (OUTPUT - Tráfico que ORIGINA el servidor)
+# REGLAS DE SALIDA (OUTPUT - Tráfico que ORIGINA el servidor firewall)
 # =================================================================
 echo "Configurando reglas de SALIDA (OUTPUT)..."
 
